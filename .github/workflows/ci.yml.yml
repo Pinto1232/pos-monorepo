@@ -43,7 +43,7 @@ jobs:
       - name: Run Tests
         run: dotnet test backend/PosBackend.sln --no-build --verbosity normal
 
-      # Deployment: Build and push Docker image only on main branch
+      # Deployment: Build and push Docker image only on main 
       - name: Build Docker Image
         if: github.ref == 'refs/heads/main'
         run: |
@@ -92,4 +92,4 @@ jobs:
       - name: Deploy to Vercel
         if: github.ref == 'refs/heads/main'
         run: |
-            npx vercel --prod --token "${{ secrets.VERCEL_TOKEN }}"
+          npx vercel --prod --token ""
