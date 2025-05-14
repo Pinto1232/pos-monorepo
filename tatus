@@ -1,5 +1,0 @@
-[33m2abb799[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfix-bugs[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m refacored the component
-[33ma513a8a[m commit my dashboard change
-[33m43da9bb[m Update submodule pointers to latest clean commits
-[33me79bf7d[m test code
-[33m8165fa4[m Add .gitmodules with submodule URLs
