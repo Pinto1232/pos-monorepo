@@ -1,0 +1,105 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+
+jobs:
+  build-backend:
+    name: Build & Test Backend
+    runs-on: ubuntu-latest
+    # This job runs for push and pull_request events.
+    steps:
+      - uses: actions/checkout@v2
+
+      # Cache NuGet packages to speed up .NET restore
+      - name: Cache NuGet packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore backend/PosBackend.sln
+
+      - name: Build
+        run: dotnet build backend/PosBackend.sln --configuration Release
+
+      - name: Run Tests
+        run: dotnet test backend/PosBackend.sln --no-build --verbosity normal
+
+      # Deployment: Build and push Docker image only on main
+      - name: Build Docker Image
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/pos-backend:latest backend
+
+      - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Push Docker Image
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v2
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/pos-backend:latest
+
+  build-frontend:
+    name: Build & Test Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      # Cache Node modules to speed up npm install
+      - name: Cache Node Modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Run Tests
+        working-directory: frontend
+        run: npm run test
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      # Deployment: Deploy to Vercel only on main branch
+      - name: Deploy to Vercel
+        if: github.ref == 'refs/heads/main'
+        run: |
+          npx vercel --prod --token "${{ secrets.VERCEL_TOKEN }}"
