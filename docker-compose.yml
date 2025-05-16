@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://backend:5107
+      - NEXT_PUBLIC_KEYCLOAK_URL=http://keycloak:8080
+      - NEXT_PUBLIC_KEYCLOAK_REALM=pisval-pos-realm
+      - NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=pos-frontend
+      - NEXT_PUBLIC_REDIRECT_URI=http://localhost:3000/api/auth/callback
+      - NEXT_PUBLIC_LOGIN_REDIRECT=/dashboard
+      - NEXT_PUBLIC_LOGOUT_REDIRECT=/
+    depends_on:
+      - backend
+      - keycloak
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - pos-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5107:5107"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=pos_system;Username=pos_user;Password=rj200100p
+      - Keycloak__Authority=http://keycloak:8080/realms/pisval-pos-realm
+      - Keycloak__Realm=pisval-pos-realm
+      - Keycloak__ClientId=pos-backend
+      - Keycloak__ClientSecret=mKvMzX6Klgc4yMFRmqs3H3OtSRwa0B3b
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - pos-network
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=pos_user
+      - POSTGRES_PASSWORD=rj200100p
+      - POSTGRES_DB=pos_system
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pos_user -d pos_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pos-network
+
+  keycloak:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.keycloak
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloakpassword
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - "8282:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pos-network
+
+networks:
+  pos-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
