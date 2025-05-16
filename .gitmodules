@@ -1,7 +1,0 @@
-[submodule "backend"]
-    path = backend
-    url = https://github.com/Pinto1232/pos-backend.git
-
-[submodule "frontend"]
-    path = frontend
-    url = https://github.com/Pinto1232/pos-system.git
